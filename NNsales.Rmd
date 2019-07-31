@@ -75,7 +75,7 @@ head(trainDataSet)
 
 ## what factors may be in play??
 ```{r}
-linearModel = lm(sales~.^2, data = trainDataSet)
+linearModel = lm(sales~(.-salesTgt)^2, data = trainDataSet)
 summary(linearModel)
 ```
 
@@ -100,7 +100,7 @@ x = data.frame(age=trainDataSet$age[randomTest],                  miles=trainDat
     income= trainDataSet$income[randomTest])
 print(x)
 predictSales = predict(salesNet,x )
-print(paste('actual = ',trainDataSet$sales[randomTest],'  predicted: ',predictSales[1:9] ))
+print(paste('actual = ',trainDataSet$salesTgt[randomTest],'  predicted: ',ifelse(predictSales[1:9]>0.5,1,0 )))
 
 
 ```
@@ -126,7 +126,7 @@ head(trainDataSetNormalized)
 
 
 ```{r}
-salesNetNormalized = neuralnet(sales~age+miles+debt+income, data = trainDataSetNormalized, hidden=c(1), stepmax=1.e5, rep=5)
+salesNetNormalized = neuralnet(salesTgt~age+miles+debt+income, data = trainDataSetNormalized, hidden=c(1), stepmax=1.e5, rep=5)
 
 #learningrate.factor = list(minus = 0.5,plus = 1.8))
 plot(salesNet)
