@@ -126,7 +126,7 @@ head(trainDataSetNormalized)
 
 
 ```{r}
-salesNetNormalized = neuralnet(salesTgt~age+miles+debt+income, data = trainDataSetNormalized, hidden=c(1), stepmax=1.e5, rep=5)
+salesNetNormalized = neuralnet(sales~age+miles+debt+income, data = trainDataSetNormalized, hidden=c(1), stepmax=1.e5, rep=5)
 
 #learningrate.factor = list(minus = 0.5,plus = 1.8))
 plot(salesNet)
@@ -144,7 +144,7 @@ hist(err)
 
 
 ```{r}
-predictTestNormalized = predict(salesNet, testDataSet)
+predictTest = predict(salesNet, testDataSet)
 err = testDataSet$sales-predictTest
 hist(err)
 ```
