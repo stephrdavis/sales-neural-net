@@ -10,10 +10,11 @@ output:
 ---
 
 # Introduction
-This is an example application of a neural network designed to identify characterists of car buyers.  This could potentially aid in advertising
+This is an application of a neural network designed to identify characterists of car buyers.  This purose is to direct advertising
 
 ## first set up the environment
-Assumes the .csv file 'cars.csv' is in the working directory  
+
+<!-- Assumes the .csv file 'cars.csv' is in the working directory !--> 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -51,7 +52,7 @@ head(cars)
 lengthData = length(cars$age) #  how many entries in the data set
 nTrain = 0
 nTest=0
-nTrain = round(0.80*lengthData,0)
+nTrain = round(0.70*lengthData,0)
 nTest = lengthData-nTrain
 
 # shuffle the data, take the first nTrain as the training set, the 
@@ -82,10 +83,15 @@ summary(linearModel)
 
 
 
-```{r}
+```{r plotSalesNet, fig.keep='all'}
 
 salesNet = neuralnet(salesTgt~age+miles+debt+income, data = trainDataSet, hidden=c(1), stepmax=1.e5, rep=5)
 
+```
+
+plot..
+
+```{r fig.width=100}
 plot(salesNet)
 ```
 
