@@ -10,7 +10,7 @@ output:
 ---
 
 # Introduction
-This is an application of a neural network designed to identify characterists of car buyers.  This purose is to direct advertising
+This is an application of a neural network designed to identify characterists of car buyers.  The purose is to direct advertising
 
 ## first set up the environment
 
@@ -20,6 +20,20 @@ This is an application of a neural network designed to identify characterists of
 knitr::opts_chunk$set(echo = TRUE)
 library(neuralnet)
 cars = read.csv('cars.csv', header=TRUE)
+```
+
+The data set contains information about car buyers
+
+Variable       |  Description
+---------------|----------------------------------------
+age            | age of the buyer
+gender         | sex of the buyer
+miles          | average number of miles driven per day
+debt           | current debt of the buyer
+income         | buyer montly income
+sales          | amount spent on a used car
+
+```{r}
 #normalize age, miles, debt, income, and sales
 carsNormalized = cars
 carsNormalized$age = (cars$age-mean(cars$age))/sd(cars$age)
@@ -27,7 +41,6 @@ carsNormalized$miles = (cars$miles-mean(cars$miles))/sd(cars$miles)
 carsNormalized$debt = (cars$debt - mean(cars$debt))/sd(cars$debt)
 carsNormalized$income = (cars$income-mean(cars$income))/sd(cars$income)
 carsNormalized$sales = (cars$sales-mean(cars$sales))/sd(cars$sales)
-
 
 ```
 
@@ -76,16 +89,15 @@ head(trainDataSet)
 
 ## what factors may be in play??
 ```{r}
-linearModel = lm(sales~(.-salesTgt)^2, data = trainDataSet)
+linearModel = lm(sales~(.-salesTgt), data = trainDataSet)
 summary(linearModel)
 ```
 
 
 
-
 ```{r plotSalesNet, fig.keep='all'}
 
-salesNet = neuralnet(salesTgt~age+miles+debt+income, data = trainDataSet, hidden=c(1), stepmax=1.e5, rep=5)
+salesNet = neuralnet(salesTgt~age+miles+debt+income, data = trainDataSet, hidden=c(2), stepmax=1.e5, rep=5)
 
 ```
 
