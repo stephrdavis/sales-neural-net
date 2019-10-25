@@ -21,7 +21,7 @@ This is an application of a neural network designed to identify characterists of
   
 ## first set up the environment
 
-<!-- Assumes the .csv file 'cars.csv' is in the working directory !--> 
+<!-- Assumes the .csv file 'cars.csv' is in the working directory !-->  
 
 ```{r setup, include=FALSE}
 set.seed(500)
