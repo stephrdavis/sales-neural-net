@@ -12,16 +12,25 @@ output:
 # Introduction
 This is an application of a neural network designed to identify characterists of car buyers.  The purose is to direct advertising
 
+**ASSIGNMENT:**    
+  1. Find the 'best' sales target price for predicting sales -  
+  2. Determing values of age, gender, income level or commute distance *i.e.* miles/wk that predict best sales  
+  3. Determing the appropriate neural net - how many hidden layers, what variables to leave out?  
+  4. Does it help to use 80/20 (or any other) split for training/test sets?  
+  5. Recommend an advetising approach based on your findings  
+  
 ## first set up the environment
 
 <!-- Assumes the .csv file 'cars.csv' is in the working directory !--> 
 
 ```{r setup, include=FALSE}
+set.seed(500)
 knitr::opts_chunk$set(echo = TRUE)
 library(neuralnet)
 cars = read.csv('cars.csv', header=TRUE)
 ```
 
+## table ..  description of the data
 The data set contains information about car buyers
 
 Variable       |  Description
@@ -32,6 +41,9 @@ miles          | average number of miles driven per day
 debt           | current debt of the buyer
 income         | buyer montly income
 sales          | amount spent on a used car
+
+
+## set up the normalized data:  
 
 ```{r}
 #normalize age, miles, debt, income, and sales
@@ -46,123 +58,194 @@ carsNormalized$sales = (cars$sales-mean(cars$sales))/sd(cars$sales)
 
 ## print the first 6 entries of the cars data set
 
+=====  
+set the target price for sales  
+=====  
+
 ```{r}
-head(cars)
+
+salesTargetPrice = 8500
 
 summary(cars$sales)
-hist(cars$sales, xlab='price')
+hist(cars$sales, xlab='price', main='Used Car Sales Prices')
 
-# set up 'yes / no' based on sales price $10k
-cars$salesTgt = ifelse(cars$sales>10000,1,0)
+# set up 'yes / no' based on sales price salesTargetPrice
+cars$salesTgt = ifelse(cars$sales>salesTargetPrice,1,0)
+carsNormalized$salesTgt = ifelse(cars$sales>salesTargetPrice,1,0)
 
 head(cars)
 ```
 
-# Set up the neural net
+# Set up the Training and Test data  
+
+=====    
+set the training fraction  
+=====
+
 
 ```{r}
 ##set up the training and test data:
+
+trainingFraction = 0.75
+
 lengthData = length(cars$age) #  how many entries in the data set
 nTrain = 0
 nTest=0
-nTrain = round(0.70*lengthData,0)
+nTrain = round(trainingFraction*lengthData,0)
 nTest = lengthData-nTrain
 
 # shuffle the data, take the first nTrain as the training set, the 
 # remainder as the test set
 shuffle = sample(1:lengthData) 
 
-#trainDataSet = carsNormalized[shuffle[1:nTrain],]
-#testDataSet = carsNormalized[shuffle[(nTrain+1) : lengthData],]
 testDataSet = vector("numeric", length=nTest)
 trainDataset= vector("numeric", length=nTrain)
 trainIndex = shuffle[1:nTrain]
 trainDataSet = cars[shuffle[1:nTrain],]
+normalizedTrainDataSet= carsNormalized[shuffle[1:nTrain],]
 
 testIndex = vector("numeric")
 testIndex = shuffle[nTest+1:lengthData]
 testDataSet = cars[shuffle[(nTrain+1):lengthData],]
+normalizedTestDataSet = carsNormalized[shuffle[(nTrain+1):lengthData],]
 
 head(trainDataSet)
 
+head(normalizedTrainDataSet)
+
 ```
 
-## what factors may be in play??
+# what factors may be in play??
+  
 ```{r}
-linearModel = lm(sales~(.-salesTgt), data = trainDataSet)
+linearModel = glm(sales~ age + gender + miles + debt + income, data = trainDataSet)
 summary(linearModel)
+print(linearModel)
+plot(linearModel)
+```
+
+ leave gender out  
+ 
+# Traditional stat approach: Logistic Regression  
+
+```{r}
+logisticModel = glm(salesTgt ~ age + miles + debt + income, family=binomial, data = trainDataSet)
+summary(logisticModel)
+plot(logisticModel)
+b = as.numeric(logisticModel$coefficients)
+
+```
+
+## quick look- general probability of a sale  
+print probabilities of sale based on age from logistic regression
+
+```{r}
+
+averageDebt = mean(testDataSet$debt)
+averageIncome = mean(testDataSet$income)
+averageMiles = mean(testDataSet$miles)
+xx = b[1]+b[2]*testDataSet$age + b[3]*averageMiles +
+  b[4]*averageDebt + b[5]*averageIncome
+pred.prob = 1./(1+exp(xx))
+
+plot(testDataSet$age, pred.prob, ylab='prob of sale',
+     xlab='age')
+```
+
+## Cross tabulation of logistic regression predictions  
+columns are 'truth,' rows are predictions
+
+```{r echo=FALSE}
+# set up the table column
+xTabLogis = matrix(0,nrow=2, ncol=2)
+probSale = 0.2
+for(i in 1:nTest){
+  
+  if((pred.prob[i]>probSale) && (testDataSet$salesTgt[i]==1) )          xTabLogis[2,2] = xTabLogis[2,2]+1
+     
+  if((pred.prob[i]>probSale) && (testDataSet$salesTgt[i]==0))
+     xTabLogis[2,1] = xTabLogis[2,1]+1
+
+  if((pred.prob[i]<=probSale) && (testDataSet$salesTgt[i]==0))
+     xTabLogis[1,1] = xTabLogis[1,1]+1
+
+  if((pred.prob[i]<=probSale) && (testDataSet$salesTgt[i]==1))
+     xTabLogis[1,2] = xTabLogis[1,2]+1
+      
+}
+
+print(xTabLogis)
+print('columns are truth in data set, ')
+print('rows are predicted by logistic regression ')
+
+accuracyLogis = (xTabLogis[1,1]+xTabLogis[2,2])/nTest
+print(paste('Overall accuracy: ', round(accuracyLogis,2)))
+
 ```
 
 
+# On with the NN  
 
-```{r plotSalesNet, fig.keep='all'}
+## Use the normalized data!
 
-salesNet = neuralnet(salesTgt~age+miles+debt+income, data = trainDataSet, hidden=c(2), stepmax=1.e5, rep=5)
+```{r SalesNet}
+# set up the model using the training set
+salesNet = neuralnet(salesTgt~age+miles+debt+income, data = normalizedTrainDataSet, hidden=c(2), stepmax=1.e5, rep=5)
 
 ```
 
 plot..
 
-```{r fig.width=100}
+```{r  fig.keep='all', fig.width=100}
 plot(salesNet)
 ```
 
+## cross tabulation for the NN
+
+NN cross tabulation; columns are 'truth', rows are predictions
+
+```{r echo=FALSE}
+xTabNN = matrix(0,nrow=2, ncol=2)
+
+for(i in 1:nTest){
+  
+  if((salesNet$response[i]==1) && (testDataSet$salesTgt[i]==1) )          xTabNN[2,2] = xTabNN[2,2]+1
+     
+  if((salesNet$response[i]==1) && (testDataSet$salesTgt[i]==0))
+     xTabNN[2,1] = xTabNN[2,1]+1
+
+  if((salesNet$response[i]==0) && (testDataSet$salesTgt[i]==0))
+     xTabNN[1,1] = xTabNN[1,1]+1
+
+  if((salesNet$response[i]==0) && (testDataSet$salesTgt[i]==1))
+     xTabNN[1,2] = xTabNN[1,2]+1
+      
+}
+
+print(xTabNN)
+print('columns are truth in data set, ')
+print('rows are predicted by logistic regression ')
+
+accuracyNN = (xTabNN[1,1]+xTabNN[2,2])/nTest
+print(paste('Overall accuracy: ', round(accuracyNN,3)))
+
+
+```
 
 ## look at a few of the fit values..
 
 ```{r}
-randomTest = sample(seq((nTrain+1):lengthData),5)
-randomTest=seq(1,9)
-x = data.frame(age=trainDataSet$age[randomTest],                  miles=trainDataSet$miles[randomTest],
-    debt= trainDataSet$debt[randomTest], 
-    income= trainDataSet$income[randomTest])
+randomTest = sample(1:length(normalizedTestDataSet$salesTgt), 15)
+
+x = data.frame(age=normalizedTestDataSet$age[randomTest],     miles=normalizedTestDataSet$miles[randomTest],
+    debt= normalizedTestDataSet$debt[randomTest], 
+    income= normalizedTestDataSet$income[randomTest])
+
 print(x)
-predictSales = predict(salesNet,x )
-print(paste('actual = ',trainDataSet$salesTgt[randomTest],'  predicted: ',ifelse(predictSales[1:9]>0.5,1,0 )))
+
+print(paste('actual = ', normalizedTestDataSet$salesTgt[randomTest], '  predicted: ', salesNet$response[randomTest]))
 
 
 ```
 
-## normalized..
 
-```{r}
-testDataSetNormalized = vector("numeric", length=nTest)
-trainDatasetNormalezed= vector("numeric", length=nTrain)
-#trainIndex = shuffle[1:nTrain]
-#trainDataSet = cars[shuffle[1:nTrain],]
-
-#testIndex = vector("numeric")
-#testIndex = shuffle[nTest+1:lengthData]
-
-trainDataSetNormalized= carsNormalized[shuffle[1:nTrain],]
-
-testDataSetNormalized = carsNormalized[shuffle[(nTrain+1):lengthData],]
-
-head(trainDataSetNormalized)
-```
-
-
-
-```{r}
-salesNetNormalized = neuralnet(sales~age+miles+debt+income, data = trainDataSetNormalized, hidden=c(1), stepmax=1.e5, rep=5)
-
-#learningrate.factor = list(minus = 0.5,plus = 1.8))
-plot(salesNet)
-```
-
-
-
-## how'd we do on the normalized test set?
-
-```{r}
-predictTestNormalized = predict(salesNetNormalized, testDataSetNormalized)
-err = testDataSetNormalized$sales-predictTestNormalized
-hist(err)
-```
-
-
-```{r}
-predictTest = predict(salesNet, testDataSet)
-err = testDataSet$sales-predictTest
-hist(err)
-```
